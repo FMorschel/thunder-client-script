@@ -1,0 +1,446 @@
+
+<div id="container"></div>
+
+<script>
+  function getPrimaryKey(row) {
+    return row.ordem;
+  }
+
+  // get the container element
+  let container = document.getElementById("container");
+
+  // Add a text here so that if any errors occur I can set the text to the error message
+  let errorText = document.createElement("p");
+  errorText.textContent = "This is a test error message.";
+  errorText.style.color = "red";
+  container.appendChild(errorText);
+
+  // Create a new div element to hold the table
+  let tableContainer = document.createElement("div");
+  tableContainer.innerHTML = '<table></table>';
+  container.appendChild(tableContainer);
+
+  //var chart_data = ${JSON.stringify(response)};
+  var cols = Object.keys(chart_data[0]);
+  var sortedCol = null;
+  var sortDirection = 'asc';
+
+  var headerRow = '<tr>';
+  var bodyRows = '';
+
+  document.addEventListener('click', function (event) {
+    var contextMenu = document.getElementById('contextMenu');
+
+    // If the target of the click event is not the contextMenu and the contextMenu exists
+    if (event.target !== contextMenu) {
+      // Remove the contextMenu from the document
+      clearContextMenu();
+    }
+  });
+
+  function buildHeaderRow() {
+    headerRow = '';
+    cols.map(function (col) {
+      headerRow += '<th class="' + (col === sortedCol ? 'sorted' : '') + '" style="position: relative; cursor: pointer;" onclick="sortTable(' + "'" + col + "'" + ')">' + col + (col === sortedCol ? (sortDirection === 'asc' ? ' &#9660;' : ' &#9650;') : '') + '<button class="filterButton" onmouseover="event.stopPropagation(); this.parentNode.classList.add(' + "'no-hover'" + ');" onmouseout="this.parentNode.classList.remove(' + "'no-hover'" + ');" onclick="event.stopPropagation(); filter(' + "'" + col + "'" + ')"></button></th>';
+    });
+  }
+
+  function renderTable() {
+    buildHeaderRow();
+
+    // Add checkbox and copy button headers
+    headerRow = '<tr><th class="centered"><input type="checkbox" id="checkAll" class="disabled centered"></th><th class="disabled centered"></th>' + headerRow + '</tr>';
+
+    bodyRows = '';
+    chart_data.map(function (row, index) {
+      bodyRows += '<tr>';
+
+      // Add checkbox and copy button to each row
+      let checkId = 'check' + getPrimaryKey(row);
+      bodyRows += '<td class="centered"><input type="checkbox" id="' + checkId + '"></td>';
+      let copyButtonId = 'copy' + getPrimaryKey(row);
+      bodyRows += '<td class="centered"><button id="' + copyButtonId + '">Copy</button><span id="copyResult' + getPrimaryKey(row) + '"></span></td>';
+
+      cols.map(function (colName) {
+        let cellClass = isNaN(row[colName]) ? 'defaultCell' : 'numeric';
+        bodyRows += '<td class="' + cellClass + '">' + row[colName] + '</td>';
+      })
+
+      bodyRows += '</tr>';
+    });
+
+    var tabledata = '<table>' + headerRow + bodyRows + '</table>';
+    tableContainer.innerHTML = tabledata; // set table html
+
+    var checkAllBox = document.getElementById('checkAll');
+    if (checkAllBox) {
+      checkAllBox.addEventListener('change', handleCheckAll);
+    }
+
+    chart_data.forEach(function (row) {
+      let checkId = 'check' + getPrimaryKey(row);
+      let checkbox = document.getElementById(checkId);
+      checkbox.addEventListener('change', function () {
+        handleCheckboxChange(checkbox);
+      });
+    });
+
+    // Add event listeners to copy buttons
+    chart_data.forEach(function (row) {
+      let copyButton = document.getElementById('copy' + getPrimaryKey(row));
+      copyButton.addEventListener('click', function () {
+        handleCopyButtonClick(row);
+      });
+    });
+  }
+
+  function sortTable(colName) {
+    if (sortedCol === colName) {
+      sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+      sortedCol = colName;
+      sortDirection = 'asc';
+    }
+
+    chart_data.sort((a, b) => {
+      return sortDirection === 'asc' ? a[colName] > b[colName] ? 1 : -1 : a[colName] < b[colName] ? 1 : -1;
+    });
+
+    renderTable();
+  }
+
+  function handleCheckAll () {
+    var checkAllBox = document.getElementById('checkAll');
+    var checkboxes = document.querySelectorAll('input[type="checkbox"]');
+    checkboxes.forEach(function (checkbox) {
+      checkbox.checked = checkAllBox.checked;
+    });
+  }
+
+  function handleCheckboxChange(checkbox) {
+    var checkAllBox = document.getElementById('checkAll');
+    if (checkAllBox) {
+      if (!this.checked && (getSelectedRowsData().length === 0)) {
+        checkAllBox.checked = false;
+      } else {
+        checkAllBox.checked = true;
+      }
+    }
+  }
+
+  function handleCopyButtonClick(row) {
+    try {
+      clearAllResults(); // Call the new function before copyRow()
+      //copy json where pk is the same as the row
+      var json = objectWithPK(getPrimaryKey(row));
+
+      // Parse double values
+      for (let key in json) {
+        if (!isNaN(json[key])) {
+          json[key] = parseFloat(json[key]);
+        }
+      }
+
+      if (Array.isArray(json) && json.length === 1) {
+        json = json[0]; // Access the object directly if it's an array with a single object
+      }
+
+      copyRow(JSON.stringify(json, null, 2), 'copyResult' + getPrimaryKey(row));
+    } catch (error) {
+      errorText.textContent = 'Error: ' + error;
+    }
+  }
+
+  function objectWithPK(pk) {
+    return chart_data.filter(function (obj) {
+      return getPrimaryKey(obj) === pk;
+    });
+  }
+
+  // New function to clear all results
+  function clearAllResults() {
+    chart_data.forEach(function (row) {
+      let resultSpan = document.getElementById('copyResult' + getPrimaryKey(row));
+      resultSpan.textContent = '';
+    });
+  }
+
+  // Function to update row copied result text
+  function updateCopyResult(copyResultId, text) {
+    let element = document.getElementById(copyResultId);
+    if (element) {
+      element.textContent = text;
+    }
+  }
+
+  // Function to copy row data to clipboard
+  function copyRow(rowData, copyResultId) {
+    var copySuccess = copyToClipboard(rowData);
+    if (copySuccess === '') {
+      updateCopyResult(copyResultId, 'Copied!');
+    } else {
+      updateCopyResult(copyResultId, copySuccess);
+    }
+  }
+
+  function copyToClipboard(text) {
+    try{
+      parent.postMessage({command:'copy-text', "text": text});
+      return '';
+    } catch(error) {
+      return 'Failed to copy text' + error;
+    }
+  }
+
+  var contextMenu; // Define a variable to store the context menu
+
+  container.addEventListener('contextmenu', function(event) {
+    event.preventDefault(); // Prevent the default context menu
+
+    // Remove the previous context menu if it exists
+    clearContextMenu();
+
+    try {
+      // Create a new custom context menu
+      contextMenu = document.createElement('div');
+      contextMenu.innerHTML = '<ul style="list-style: none; padding: 0; margin: 0; background-color: #333; color: #fff;"><li class="context-menu-item" id="copySelectedRows" style="padding: 5px;">Copy selected rows</li></ul>';
+      contextMenu.style.position = 'absolute';
+      contextMenu.style.top = event.clientY + 'px';
+      contextMenu.style.left = event.clientX + 'px';
+      contextMenu.style.backgroundColor = 'white';
+      contextMenu.style.border = '1px solid white';
+      contextMenu.style.padding = '0px';
+      contextMenu.style.zIndex = '1000';
+      container.appendChild(contextMenu);
+    } catch (error) {
+      // Add text error to context menu
+      document.textContent = 'Error: ' + error;
+      copyToClipboard('Error: ' + error);
+    }
+
+    try {
+      // Get the context menu options
+      var copySelectedRowsOption = document.getElementById('copySelectedRows');
+
+      // Check if there are any selected rows
+      var selectable = hasSelectedRows();
+
+      // Add or remove the 'disabled' class based on whether there are any selected rows
+      if (selectable) {
+        copySelectedRowsOption.classList.remove('disabled');
+      } else {
+        copySelectedRowsOption.classList.add('disabled');
+      }
+
+      // Add a click event listener to the "Copy selected rows" option
+      document.getElementById('copySelectedRows').addEventListener('click', copySelectedRows);
+
+      // Remove the context menu when clicking outside of it
+      window.addEventListener('click', clearContextMenu);
+    } catch (error) {
+      // Add text error to context menu
+      contextMenu.textContent = 'Error: ' + error;
+      copyToClipboard('Error: ' + error);
+    }
+  });
+  document.addEventListener('click', clearContextMenu);
+
+  function clearContextMenu() {
+    if (contextMenu) {
+      container.removeChild(contextMenu);
+      contextMenu = null;
+    }
+  }
+
+  function copySelectedRows() {
+    clearAllResults(); // Clear all copy results
+
+    try {
+      // Get the data of the selected rows
+      var selectedRowsData = getSelectedRowsData();
+
+      var copyBuffer = [];
+
+      // Copy each selected row
+      for (let i = 0; i < selectedRowsData.length; i++) {
+        let rowData = objectWithPK(getPrimaryKey(selectedRowsData[i]));
+        if (Array.isArray(rowData) && rowData.length === 1) {
+          rowData = rowData[0]; // Access the object directly if it's an array with a single object
+        }
+        updateCopyResult('copyResult' + getPrimaryKey(rowData), 'Copied!');
+        copyBuffer.push(rowData);
+      }
+
+      // Copy the selected rows data to the clipboard
+      copyToClipboard(JSON.stringify(copyBuffer, null, 2));
+
+    } catch (error) {
+      // place error inside errorText
+      errorText.textContent = 'Error: ' + error;
+    }
+
+    clearContextMenu();
+  }
+
+  // Function to check if there are any selected rows
+  function hasSelectedRows() {
+    var selectedRowsData = getSelectedRowsData();
+    return selectedRowsData.length > 0;
+  }
+
+  // Function to get the data of the selected rows
+  function getSelectedRowsData() {
+    var selectedRowsData = [];
+  
+    var table = container.querySelector('table');
+    var rows = table.querySelectorAll('tr');
+
+    rows.forEach(function (row, index) {
+      var checkbox = row.querySelector('input[type="checkbox"]');
+      if (checkbox) {
+        if (checkbox.id === 'checkAll') return;
+        if (!checkbox.checked) return; // Skip unchecked rows
+        var rowData = chart_data[index - 1]; // Get the data of the selected row
+        selectedRowsData.push(rowData);
+      }
+    });
+
+    return selectedRowsData; // Convert selected rows data to a JSON string
+  }
+
+  // Set default order when page loads
+  chart_data.sort((a, b) => 0);
+
+  renderTable();
+</script>
+<style>
+  body {
+    font-size: 13px;
+    font-family: "HelveticaNeue", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  }
+
+  table {
+    width: 100%;
+    box-sizing: border-box;
+    border-collapse: collapse;
+    border-spacing: 0;
+  }
+
+  td,
+  th {
+    padding: 0;
+    border: 1px solid #E1E1E1;
+  }
+
+  th,
+  td {
+    padding: 4px 6px;
+    text-align: left;
+  }
+
+  th:first-child,
+  td:first-child {
+    padding-left: 0;
+  }
+
+  th:last-child,
+  td:last-child {
+    padding-right: 0;
+  }
+
+  th {
+    white-space: nowrap;
+    transition: width 0.2s ease-in-out;
+  }
+
+  th {
+    cursor: pointer;
+  }
+
+  th:hover {
+    background-color: #555;
+  }
+
+  li {
+    list-style: none;
+  }
+
+  th {
+    position: relative;
+    padding-right: 26px;
+  }
+
+  .filterButton {
+    position: absolute;
+    right: 2px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 10px;
+    height: 10px;
+    cursor: pointer;
+    background-color: #444
+  }
+
+  .filterButton:hover {
+    background-color: #666;
+  }
+
+  .context-menu-item {
+    cursor: pointer;
+  }
+
+  .context-menu-item:hover {
+    background-color: #555;
+  }
+
+  .disabled {
+    cursor: default !important;
+    background-color: #333 !important;
+    color: #999 !important;
+  }
+
+  .disabled:hover {
+    background-color: #333 !important;
+    color: #999 !important;
+  }
+
+  th.no-hover:hover {
+    background-color: initial;
+  }
+
+  td input[type="checkbox"] {
+    display: block;
+    margin: auto;
+  }
+
+  /*.centered {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: nowrap;
+  }
+
+  td.centered {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: nowrap;
+  }
+
+  th.centered {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: nowrap;
+  }*/
+
+  .defaultCell {
+    text-align: left;
+  }
+
+  .numeric {
+    text-align: right;
+  }
+</style>
