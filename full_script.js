@@ -204,7 +204,7 @@ var html = `
     try {
       // Create a new custom context menu
       contextMenu = document.createElement('div');
-      contextMenu.innerHTML = '<ul style="list-style: none; padding: 0; margin: 0; background-color: #333; color: #fff;"><li class="context-menu-item" id="copySelectedRows" style="padding: 5px;">Copy selected rows</li></ul>';
+      contextMenu.innerHTML = '<ul style="list-style: none; padding: 0; margin: 0; background-color: #333; color: #fff;"><li class="context-menu-item" id="copyText" style="padding: 5px;">Copy selected text</li><li class="context-menu-item" id="copySelectedRows" style="padding: 5px;">Copy selected rows</li></ul>';
       contextMenu.style.position = 'absolute';
       contextMenu.style.top = event.clientY + 'px';
       contextMenu.style.left = event.clientX + 'px';
@@ -216,6 +216,31 @@ var html = `
     } catch (error) {
       // Add text error to context menu
       document.textContent = 'Error: ' + error;
+      copyToClipboard('Error: ' + error);
+    }
+
+    try {
+      // Get the context menu options
+      var copyTextOption = document.getElementById('copyText');
+
+      var canCopyText = window.getSelection().toString().length > 0;
+
+      // Add or remove the 'disabled' class based on whether there is any selected text
+      if (canCopyText) {
+        copyTextOption.classList.remove('disabled');
+      } else {
+        copyTextOption.classList.add('disabled');
+      }
+
+      // Add a click event listener to the "Copy selected text" option
+      copyTextOption.addEventListener('click', function() {
+        copyToClipboard(window.getSelection().toString());
+        clearContextMenu();
+      });
+
+    } catch (error) {
+      // Add text error to context menu
+      contextMenu.textContent = 'Error: ' + error;
       copyToClipboard('Error: ' + error);
     }
 
@@ -418,13 +443,15 @@ var html = `
     display: flex;
     align-items: center;
     justify-content: center;
-  }*/
+    flex-wrap: nowrap;
+  }
 
   td.centered {
     display: flex;
     flex-direction: row;
     justify-content: center;
     align-items: center;
+    flex-wrap: nowrap;
   }
 
   th.centered {
@@ -432,7 +459,8 @@ var html = `
     flex-direction: row;
     justify-content: center;
     align-items: center;
-  }
+    flex-wrap: nowrap;
+  }*/
 
   .defaultCell {
     text-align: left;
