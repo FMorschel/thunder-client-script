@@ -21,8 +21,8 @@ The `chart_data` variable inside the `inner_html` is given with the second value
     - [ ] If it's an array of simple data.
     - [ ] If it's a json array.
   - [ ] If the json has an inner json.
-- Add an `Export to` option with some simple cases.
-- Add an `Copy as` option with some simple cases similar to what DBeaver has in its output table.
+- [ ] Add an `Export to` option with some simple cases.
+- [ ] Add an `Copy as` option with some simple cases similar to what DBeaver has in its output table.
 - [ ] Add a "Copy content" button inside every data cell.
   - [ ] Any copied string should be copied with single quote marks around.
   - [ ] Any null value cell should disable the copy content button.
